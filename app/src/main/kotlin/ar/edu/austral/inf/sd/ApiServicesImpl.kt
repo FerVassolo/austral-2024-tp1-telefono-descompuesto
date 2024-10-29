@@ -13,15 +13,25 @@ import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.update
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
+import org.springframework.web.client.RestClientException
+import org.springframework.web.client.RestTemplate
+import org.springframework.web.client.postForEntity
 import org.springframework.web.context.request.RequestContextHolder
 import org.springframework.web.context.request.ServletRequestAttributes
+import java.net.http.HttpHeaders
 import java.security.MessageDigest
 import java.util.*
 import java.util.concurrent.CountDownLatch
 import kotlin.random.Random
+import org.springframework.util.LinkedMultiValueMap
+import org.springframework.util.MultiValueMap
+import org.springframework.http.HttpEntity
+import org.springframework.http.MediaType
 
 @Component
-class ApiServicesImpl: RegisterNodeApiService, RelayApiService, PlayApiService {
+class ApiServicesImpl(
+    private val restTemplate: RestTemplate
+): RegisterNodeApiService, RelayApiService, PlayApiService {
 
     @Value("\${server.name:nada}")
     private val myServerName: String = ""
@@ -37,6 +47,11 @@ class ApiServicesImpl: RegisterNodeApiService, RelayApiService, PlayApiService {
     private var currentMessageWaiting = MutableStateFlow<PlayResponse?>(null)
     private var currentMessageResponse = MutableStateFlow<PlayResponse?>(null)
 
+
+
+    /*Este código registra un nuevo nodo en la lista de nodos,
+    asegurando que cada nodo conoce cuál es el siguiente en la lista,
+    y devuelve la información del nodo recién registrado junto con el siguiente nodo en la secuencia.*/
     override fun registerNode(host: String?, port: Int?, name: String?): RegisterResponse {
 
         val nextNode = if (nodes.isEmpty()) {
@@ -54,13 +69,18 @@ class ApiServicesImpl: RegisterNodeApiService, RelayApiService, PlayApiService {
         return RegisterResponse(nextNode.nextHost, nextNode.nextPort, uuid, newSalt())
     }
 
+    /** Procesa un mensaje recibido y, si es un nodo de relé, lo reenvía al siguiente nodo.
+     * Si no, verifica el mensaje y lo procesa.
+     * @param message y signatures: Recordemos que es un multipart con dos partes
+     * */
     override fun relayMessage(message: String, signatures: Signatures): Signature {
-        val receivedHash = doHash(message.encodeToByteArray(), salt)
+        val receivedHash = doHash(message.encodeToByteArray(), salt) // ¿Esto no podría ir directo en el else?
         val receivedContentType = currentRequest.getPart("message")?.contentType ?: "nada"
         val receivedLength = message.length
         if (nextNode != null) {
-            // Soy un relé. busco el siguiente y lo mando
-            // @ToDo do some work here
+            // Como existe el nextNode: soy un relé.
+            val newSignatures = signatures.items + clientSign(message, receivedContentType)
+            sendRelayMessage(message, receivedContentType, nextNode!!, Signatures(newSignatures))
         } else {
             // me llego algo, no lo tengo que pasar
             if (currentMessageWaiting.value == null) throw BadRequestException("no waiting message")
@@ -98,14 +118,38 @@ class ApiServicesImpl: RegisterNodeApiService, RelayApiService, PlayApiService {
     }
 
     internal fun registerToServer(registerHost: String, registerPort: Int) {
-        // @ToDo acá tienen que trabajar ustedes
-        val registerNodeResponse: RegisterResponse = RegisterResponse("", -1, "", "")
-        println("nextNode = ${registerNodeResponse}")
-        nextNode = with(registerNodeResponse) { RegisterResponse(nextHost, nextPort, uuid, hash) }
+        // @ToDo acá tienen que trabajar ustedes (done)
+        val registerUrl = "http://$registerHost:$registerPort/register-node?host=localhost&name=$myServerName&port=$myServerPort"
+        try {
+            val response = restTemplate.postForEntity<RegisterResponse>(registerUrl)
+            val registerResponse: RegisterResponse = response.body!!
+            nextNode = RegisterResponse(registerResponse.nextHost, registerResponse.nextPort, registerResponse.uuid, registerResponse.hash)
+        } catch (e: RestClientException){
+            print("Couldn't register to server: $registerUrl")
+        }
     }
 
+
     private fun sendRelayMessage(body: String, contentType: String, relayNode: RegisterResponse, signatures: Signatures) {
-        // @ToDo acá tienen que trabajar ustedes
+        // @ToDo acá tienen que trabajar ustedes (done)
+        val url = "http://${relayNode.nextHost}:${relayNode.nextPort}/relay"
+
+        val headers = org.springframework.http.HttpHeaders();
+        headers.contentType = MediaType.MULTIPART_FORM_DATA;
+
+        val map: LinkedMultiValueMap<String, Any> = LinkedMultiValueMap();
+
+        map.add("message", body);
+        map.add("signatures", signatures);
+        val request = HttpEntity(map, headers);
+
+        try{
+            restTemplate.postForEntity<Signature>(url, request)
+        }
+        catch (e: RestClientException){
+            print("Couldn't send relay message to: $url")
+        }
+
     }
 
     private fun clientSign(message: String, contentType: String): Signature {
