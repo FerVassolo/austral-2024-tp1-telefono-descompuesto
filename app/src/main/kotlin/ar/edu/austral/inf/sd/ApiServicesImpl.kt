@@ -4,6 +4,8 @@ import ar.edu.austral.inf.sd.server.api.PlayApiService
 import ar.edu.austral.inf.sd.server.api.RegisterNodeApiService
 import ar.edu.austral.inf.sd.server.api.RelayApiService
 import ar.edu.austral.inf.sd.server.api.BadRequestException
+import ar.edu.austral.inf.sd.server.api.ReconfigureApiService
+import ar.edu.austral.inf.sd.server.api.UnregisterNodeApiService
 import ar.edu.austral.inf.sd.server.model.PlayResponse
 import ar.edu.austral.inf.sd.server.model.RegisterResponse
 import ar.edu.austral.inf.sd.server.model.Signature
@@ -21,23 +23,26 @@ import java.util.concurrent.CountDownLatch
 import kotlin.random.Random
 
 @Component
-class ApiServicesImpl: RegisterNodeApiService, RelayApiService, PlayApiService {
+class ApiServicesImpl : RegisterNodeApiService, RelayApiService, PlayApiService, UnregisterNodeApiService,
+    ReconfigureApiService {
 
     @Value("\${server.name:nada}")
     private val myServerName: String = ""
+
     @Value("\${server.port:8080}")
     private val myServerPort: Int = 0
     private val nodes: MutableList<RegisterResponse> = mutableListOf()
     private var nextNode: RegisterResponse? = null
     private val messageDigest = MessageDigest.getInstance("SHA-512")
-    private val salt = newSalt()
+    private val salt = Base64.getEncoder().encodeToString(Random.nextBytes(9))
     private val currentRequest
         get() = (RequestContextHolder.getRequestAttributes() as ServletRequestAttributes).request
     private var resultReady = CountDownLatch(1)
     private var currentMessageWaiting = MutableStateFlow<PlayResponse?>(null)
     private var currentMessageResponse = MutableStateFlow<PlayResponse?>(null)
+    private var xGameTimestamp: Int = 0
 
-    override fun registerNode(host: String?, port: Int?, name: String?): RegisterResponse {
+    override fun registerNode(host: String?, port: Int?, uuid: UUID?, salt: String?, name: String?): RegisterResponse {
 
         val nextNode = if (nodes.isEmpty()) {
             // es el primer nodo
@@ -47,14 +52,13 @@ class ApiServicesImpl: RegisterNodeApiService, RelayApiService, PlayApiService {
         } else {
             nodes.last()
         }
-        val uuid = UUID.randomUUID().toString()
-        val node = RegisterResponse(host!!, port!!, uuid, newSalt())
+        val node = RegisterResponse(host!!, port!!, uuid, salt)
         nodes.add(node)
 
         return RegisterResponse(nextNode.nextHost, nextNode.nextPort, uuid, newSalt())
     }
 
-    override fun relayMessage(message: String, signatures: Signatures): Signature {
+    override fun relayMessage(message: String, signatures: Signatures, xGameTimestamp: Int?): Signature {
         val receivedHash = doHash(message.encodeToByteArray(), salt)
         val receivedContentType = currentRequest.getPart("message")?.contentType ?: "nada"
         val receivedLength = message.length
@@ -97,6 +101,20 @@ class ApiServicesImpl: RegisterNodeApiService, RelayApiService, PlayApiService {
         return currentMessageResponse.value!!
     }
 
+    override fun unregisterNode(uuid: UUID?, salt: String?): String {
+        TODO("Not yet implemented")
+    }
+
+    override fun reconfigure(
+        uuid: UUID?,
+        salt: String?,
+        nextHost: String?,
+        nextPort: Int?,
+        xGameTimestamp: Int?
+    ): String {
+        TODO("Not yet implemented")
+    }
+
     internal fun registerToServer(registerHost: String, registerPort: Int) {
         // @ToDo acá tienen que trabajar ustedes
         val registerNodeResponse: RegisterResponse = RegisterResponse("", -1, "", "")
@@ -104,7 +122,12 @@ class ApiServicesImpl: RegisterNodeApiService, RelayApiService, PlayApiService {
         nextNode = with(registerNodeResponse) { RegisterResponse(nextHost, nextPort, uuid, hash) }
     }
 
-    private fun sendRelayMessage(body: String, contentType: String, relayNode: RegisterResponse, signatures: Signatures) {
+    private fun sendRelayMessage(
+        body: String,
+        contentType: String,
+        relayNode: RegisterResponse,
+        signatures: Signatures
+    ) {
         // @ToDo acá tienen que trabajar ustedes
     }
 
@@ -124,7 +147,7 @@ class ApiServicesImpl: RegisterNodeApiService, RelayApiService, PlayApiService {
         Signatures(listOf())
     )
 
-    private fun doHash(body: ByteArray, salt: String):  String {
+    private fun doHash(body: ByteArray, salt: String): String {
         val saltBytes = Base64.getDecoder().decode(salt)
         messageDigest.update(saltBytes)
         val digest = messageDigest.digest(body)

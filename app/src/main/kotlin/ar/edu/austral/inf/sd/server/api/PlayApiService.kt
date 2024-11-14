@@ -10,7 +10,10 @@ interface PlayApiService {
      *
      * @param body El mensaje a enviar por la red telefónica (required)
      * @return La red telefónica funcionó bien! (status code 200)
-     *         or La red telefónica falló (status code 503)
+     *         or Juego cerrado. Se llevaron la pelota. (status code 400)
+     *         or Faltan firmas. (status code 500)
+     *         or Yo mandé peras y recibí bananas (status code 503)
+     *         or La red telefónica falló, no me contestaron. (status code 504)
      * @see PlayApi#sendMessage
      */
     fun sendMessage(body: kotlin.String): PlayResponse

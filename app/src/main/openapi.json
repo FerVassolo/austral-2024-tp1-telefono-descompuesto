@@ -26,6 +26,21 @@
             }
           },
           {
+            "name": "uuid",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "salt",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "name",
             "in": "query",
             "schema": {
@@ -35,11 +50,152 @@
         ],
         "responses": {
           "200": {
-            "description": "Todo bien",
+            "description": "Todo bien. Nueva registración. Listo para jugar.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/registerResponse"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Un cliente recurrente. Registración existente pero válida. Listo para jugar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/registerResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tenés algún error de parámetros",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/registerResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Estás tratando de estafarme... El UUID ya existe pero mandaste la clave incorrecta.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/registerResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/unregister-node": {
+      "post": {
+        "operationId": "unregisterNode",
+        "description": "Un participante decide dejar el juego",
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "salt",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Sashay Away",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "User error, replace user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reconfigure": {
+      "post": {
+        "operationId": "reconfigure",
+        "description": "Cambio de siguiente participante",
+        "parameters": [
+          {
+            "name": "uuid",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "salt",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "nextHost",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "nextPort",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "X-Game-Timestamp",
+            "in": "header",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cambio aceptado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -52,6 +208,15 @@
         "operationId": "relayMessage",
         "description": "Firma un mensaje y lo manda al siguiente",
         "x-content-type": "multipart/form-data",
+        "parameters": [
+          {
+            "name": "X-Game-Timestamp",
+            "in": "header",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
         "requestBody": {
           "description": "El mensaje y las firmas anteriores",
           "content": {
@@ -83,8 +248,38 @@
           }
         },
         "responses": {
-          "202": {
+          "200": {
             "description": "mensaje recibido y reenviado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/signature"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "mensaje recibido, pero no te digo si lo envié o nó.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/signature"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tu reloj atrasa...",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/signature"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Los bits se perdieron en el multiverso",
             "content": {
               "application/json": {
                 "schema": {
@@ -123,8 +318,38 @@
               }
             }
           },
+          "400": {
+            "description": "Juego cerrado. Se llevaron la pelota.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/playResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Faltan firmas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/playResponse"
+                }
+              }
+            }
+          },
           "503": {
-            "description": "La red telefónica falló",
+            "description": "Yo mandé peras y recibí bananas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/playResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "La red telefónica falló, no me contestaron.",
             "content": {
               "application/json": {
                 "schema": {
@@ -138,6 +363,15 @@
     }
   },
   "components": {
+    "headers": {
+      "X-Game-Timestamp": {
+        "required": true,
+        "schema": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
     "schemas": {
       "base64String": {
         "type": "string",
@@ -167,8 +401,8 @@
         "required": [
           "nextHost",
           "nextPort",
-          "uuid",
-          "hash"
+          "timeout",
+          "xGameTimestamp"
         ],
         "properties": {
           "nextHost": {
@@ -177,11 +411,13 @@
           "nextPort": {
             "type": "integer"
           },
-          "uuid": {
-            "type": "string"
+          "timeout": {
+            "type": "integer",
+            "minimum": 0
           },
-          "hash": {
-            "type": "string"
+          "xGameTimestamp": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       },

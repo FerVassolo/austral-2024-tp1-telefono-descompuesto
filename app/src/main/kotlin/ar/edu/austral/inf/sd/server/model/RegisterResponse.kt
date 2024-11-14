@@ -16,8 +16,8 @@ import jakarta.validation.Valid
  * 
  * @param nextHost 
  * @param nextPort 
- * @param uuid 
- * @param hash 
+ * @param timeout 
+ * @param xGameTimestamp 
  */
 data class RegisterResponse(
 
@@ -25,9 +25,11 @@ data class RegisterResponse(
 
     @get:JsonProperty("nextPort", required = true) val nextPort: kotlin.Int,
 
-    @get:JsonProperty("uuid", required = true) val uuid: kotlin.String,
+    @get:Min(0)
+    @get:JsonProperty("timeout", required = true) val timeout: kotlin.Int,
 
-    @get:JsonProperty("hash", required = true) val hash: kotlin.String
+    @get:Min(0)
+    @get:JsonProperty("xGameTimestamp", required = true) val xGameTimestamp: kotlin.Int
     ) {
 
 }

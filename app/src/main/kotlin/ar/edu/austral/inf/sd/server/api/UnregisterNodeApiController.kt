@@ -1,6 +1,5 @@
 package ar.edu.austral.inf.sd.server.api
 
-import ar.edu.austral.inf.sd.server.model.RegisterResponse
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -26,15 +25,15 @@ import kotlin.collections.Map
 @RestController
 @Validated
 @RequestMapping("\${api.base-path:}")
-class RegisterNodeApiController(@Autowired(required = true) val service: RegisterNodeApiService) {
+class UnregisterNodeApiController(@Autowired(required = true) val service: UnregisterNodeApiService) {
 
 
     @RequestMapping(
         method = [RequestMethod.POST],
-        value = ["/register-node"],
+        value = ["/unregister-node"],
         produces = ["application/json"]
     )
-    fun registerNode( @Valid @RequestParam(value = "host", required = false) host: kotlin.String?, @Valid @RequestParam(value = "port", required = false) port: kotlin.Int?, @Valid @RequestParam(value = "uuid", required = false) uuid: java.util.UUID?, @Valid @RequestParam(value = "salt", required = false) salt: kotlin.String?, @Valid @RequestParam(value = "name", required = false) name: kotlin.String?): ResponseEntity<RegisterResponse> {
-        return ResponseEntity(service.registerNode(host, port, uuid, salt, name), HttpStatus.valueOf(200))
+    fun unregisterNode( @Valid @RequestParam(value = "uuid", required = false) uuid: java.util.UUID?, @Valid @RequestParam(value = "salt", required = false) salt: kotlin.String?): ResponseEntity<kotlin.String> {
+        return ResponseEntity(service.unregisterNode(uuid, salt), HttpStatus.valueOf(202))
     }
 }

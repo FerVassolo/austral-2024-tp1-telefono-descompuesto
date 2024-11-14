@@ -36,7 +36,7 @@ class RelayApiController(@Autowired(required = true) val service: RelayApiServic
         produces = ["application/json"],
         consumes = ["multipart/form-data"]
     )
-    fun relayMessage( @RequestPart(value = "message", required = true) message: kotlin.String , @RequestPart(value = "signatures", required = true) signatures: Signatures ): ResponseEntity<Signature> {
-        return ResponseEntity(service.relayMessage(message, signatures), HttpStatus.valueOf(202))
+    fun relayMessage( @RequestParam(value = "message", required = true) message: kotlin.String , @RequestPart(value = "signatures", required = true) signatures: Signatures , @RequestHeader(value = "X-Game-Timestamp", required = false) xGameTimestamp: kotlin.Int?): ResponseEntity<Signature> {
+        return ResponseEntity(service.relayMessage(message, signatures, xGameTimestamp), HttpStatus.valueOf(200))
     }
 }
