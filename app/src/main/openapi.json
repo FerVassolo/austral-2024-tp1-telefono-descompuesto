@@ -12,6 +12,15 @@
         "description": "Registra un nuevo nodo",
         "parameters": [
           {
+            "name": "Password",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Clave sim\u00e9trica compartida"
+          },
+          {
             "name": "host",
             "in": "query",
             "schema": {
@@ -88,6 +97,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Clave sim\u00e9trica incorrecta o ausente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -137,72 +156,6 @@
         }
       }
     },
-    "/reconfigure": {
-      "post": {
-        "operationId": "reconfigure",
-        "description": "Cambio de siguiente participante",
-        "parameters": [
-          {
-            "name": "uuid",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "salt",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "nextHost",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "nextPort",
-            "in": "query",
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "name": "X-Game-Timestamp",
-            "in": "header",
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Cambio aceptado",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Datos inválidos",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/relay": {
       "post": {
         "operationId": "relayMessage",
@@ -210,11 +163,13 @@
         "x-content-type": "multipart/form-data",
         "parameters": [
           {
-            "name": "X-Game-Timestamp",
+            "name": "Password",
             "in": "header",
+            "required": true,
             "schema": {
-              "type": "integer"
-            }
+              "type": "string"
+            },
+            "description": "Clave simétrica para validar las llamadas."
           }
         ],
         "requestBody": {
@@ -241,6 +196,29 @@
                   },
                   "signatures": {
                     "$ref": "#/components/schemas/signatures"
+                  },
+                  "participants": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "uuid": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "host": {
+                          "type": "string"
+                        },
+                        "port": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "uuid",
+                        "host",
+                        "port"
+                      ]
+                    }
                   }
                 }
               }
@@ -274,6 +252,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/signature"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Clave sim\u00e9trica incorrecta o ausente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
